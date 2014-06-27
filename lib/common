@@ -7,11 +7,23 @@ then
         local write_file=''
         local create_output_filename=''
 
+        while getopts ":o:O" opt; do
+            case $opt in
+              o)
+                write_file=$OPTARG
+                ;;
+              O)
+                echo 'here'
+                create_output_filename=true
+                ;;
+            esac
+        done
+
         ## Split the arguments from curl command into an array
         IFS=' ' read -a curl_args <<< "$@"
 
         ## Iterate over each arg until we find one that starts with http
-        local count=0
+#        local count=0
         for arg in "${curl_args[@]}"
         do
             ## Does the argument start with http?
@@ -21,20 +33,20 @@ then
                 filename=$(sed 's/[:\/]/_/g' <<< ${arg})
             fi
 
-            ## Does the argument have an output file?
-            if ([ ${arg} == "-o" ] && [ ${curl_args[count+1]} != "-" ])
-            then
-                write_file=${curl_args[count+1]}
-            fi
-
-            ## Does the argument write to a file but not provide a name?
-            if [[ ${arg} =~ ^-sO$ ]]
-            then
-                create_output_filename=true
-            fi
-
-            # Increment counter
-            let count+=1
+#            ## Does the argument have an output file?
+#            if ([ ${arg} == "-o" ] && [ ${curl_args[count+1]} != "-" ])
+#            then
+#                write_file=${curl_args[count+1]}
+#            fi
+#
+#            ## Does the argument write to a file but not provide a name?
+#            if [[ ${arg} =~ ^-sO$ ]]
+#            then
+#                create_output_filename=true
+#            fi
+#
+#            # Increment counter
+#            let count+=1
         done
 
         ## Do we have to generate a filename ourselves to write to?
