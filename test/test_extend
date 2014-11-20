@@ -1,0 +1,14 @@
+#!/bin/sh
+
+testExtendScriptOutputsVersionNumber() {
+  local BUILDPACK_PATH=/tmp/compile-extensions-test-extend
+  mkdir -p $BUILDPACK_PATH
+  echo "0.0.7" > $BUILDPACK_PATH/VERSION
+
+  assertEquals "-------> Buildpack version 0.0.7" "$(./bin/extend.sh $BUILDPACK_PATH)"
+}
+
+# ==================================== Utilities ====================================
+
+BASE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source $BASE/../vendor/shunit2
