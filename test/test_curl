@@ -4,7 +4,6 @@ set -euo pipefail
 setUp() {
     export BUILDPACK_PATH=/tmp/common_spec
     mkdir -p $BUILDPACK_PATH
-    touch $BUILDPACK_PATH/VERSION
     rm -rf $BUILDPACK_PATH/dependencies
 }
 
@@ -12,22 +11,9 @@ tearDown() {
     unset BUILDPACK_PATH
 }
 
-testCurlIsNotOveriddenWhenThereAreNoDependencies() {
-    source $BIN/common
-
-    assertFalse 'curl is not overidden' $(is_a_custom_function curl)
-}
-
-testCurlIsOveriddenWhenThereAreDependencies() {
-    mkdir $BUILDPACK_PATH/dependencies
-    source $BIN/common
-
-    assertTrue 'curl is overidden' $(is_a_custom_function curl)
-}
-
 testCurlWhenTheFileDoesNotExistAsADependency() {
     mkdir $BUILDPACK_PATH/dependencies
-    source $BIN/common
+    local PATH=./bin:$PATH
 
     expected_output="Resource http://files.com/file.txt is not provided by this buildpack. Please upgrade your buildpack to receive the latest resources."
 
@@ -36,7 +22,7 @@ testCurlWhenTheFileDoesNotExistAsADependency() {
 
 testCurlWhenTheFileFromTheUrlIsStreamed() {
     mkdir $BUILDPACK_PATH/dependencies
-    source $BIN/common
+    local PATH=./bin:$PATH
     touch $BUILDPACK_PATH/dependencies/http___files.com_file.txt
     echo 'some text' > $BUILDPACK_PATH/dependencies/http___files.com_file.txt
 
@@ -45,7 +31,7 @@ testCurlWhenTheFileFromTheUrlIsStreamed() {
 
 testCurlWhenTheFileFromTheUrlIsStreamedWithOutputParameter() {
     mkdir $BUILDPACK_PATH/dependencies
-    source $BIN/common
+    local PATH=./bin:$PATH
     touch $BUILDPACK_PATH/dependencies/http___files.com_file.txt
     echo 'some text' > $BUILDPACK_PATH/dependencies/http___files.com_file.txt
 
@@ -54,7 +40,7 @@ testCurlWhenTheFileFromTheUrlIsStreamedWithOutputParameter() {
 
 testCurlWhenTheFileFromTheUrlIsWrittenToAnOutputFile() {
     mkdir $BUILDPACK_PATH/dependencies
-    source $BIN/common
+    local PATH=./bin:$PATH
     touch $BUILDPACK_PATH/dependencies/http___files.com_file.txt
     echo 'some text' > $BUILDPACK_PATH/dependencies/http___files.com_file.txt
 
@@ -65,7 +51,7 @@ testCurlWhenTheFileFromTheUrlIsWrittenToAnOutputFile() {
 
 testCurlWhenTheFileFromTheUrlIsWrittenToAnOutputFileWhichIsNotProvided() {
     mkdir $BUILDPACK_PATH/dependencies
-    source $BIN/common
+    local PATH=./bin:$PATH
     touch $BUILDPACK_PATH/dependencies/http___files.com_file.txt
     echo 'some text' > $BUILDPACK_PATH/dependencies/http___files.com_file.txt
 
@@ -78,41 +64,14 @@ testCurlWhenTheFileFromTheUrlIsWrittenToAnOutputFileWhichIsNotProvided() {
 
 testCurlSupportsHttpsWhenOveridden() {
     mkdir $BUILDPACK_PATH/dependencies
-    source $BIN/common
+    local PATH=./bin:$PATH
     touch $BUILDPACK_PATH/dependencies/https___files.com_file.txt
     echo 'some text' > $BUILDPACK_PATH/dependencies/https___files.com_file.txt
 
     assertEquals 'some text' "$(curl https://files.com/file.txt -s)"
 }
 
-testEchoContentOfVersion() {
-    rm -f /tmp/echo_first_arg
-
-    cat() {
-      echo $1 >> /tmp/echo_first_arg
-      echo '1.2.3'
-    }
-
-    OUTPUT=$(source $BIN/common)
-
-    unset -f cat
-
-    assertEquals '-------> Buildpack version 1.2.3' "$OUTPUT"
-    assertEquals "${BUILDPACK_PATH}/VERSION" `cat /tmp/echo_first_arg`
-}
-
 # ==================================== Utilities ====================================
-function is_a_custom_function() {
-    name=$1
-
-    if type $name | grep -q 'is a function$' 2>/dev/null
-    then
-        echo '0';
-    else
-        echo '1';
-    fi
-}
 
 BASE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-BIN=$BASE/../lib
 source $BASE/../vendor/shunit2
