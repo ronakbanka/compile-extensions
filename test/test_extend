@@ -1,12 +1,43 @@
 #!/bin/sh
 
+setUp() {
+    export BUILDPACK_PATH=/tmp/compile-extensions-test-extend
+    mkdir -p $BUILDPACK_PATH
+    mkdir -p $BUILDPACK_PATH/compile-extensions/bin
+    touch $BUILDPACK_PATH/compile-extensions/bin/curl
+    chmod u+x $BUILDPACK_PATH/compile-extensions/bin/curl
+}
+
+tearDown() {
+    unset BUILDPACK_PATH
+}
+
 testExtendScriptOutputsVersionNumber() {
-  local BUILDPACK_PATH=/tmp/compile-extensions-test-extend
-  mkdir -p $BUILDPACK_PATH
   echo "0.0.7" > $BUILDPACK_PATH/VERSION
 
   assertEquals "-------> Buildpack version 0.0.7" "$(./bin/extend.sh $BUILDPACK_PATH)"
 }
+
+testExtendScriptShimsCurlWhenThereAreDependencies() {
+  (
+    mkdir -p $BUILDPACK_PATH/dependencies
+
+    source ./bin/extend.sh ${BUILDPACK_PATH}
+
+    assertEquals "$BUILDPACK_PATH/compile-extensions/bin/curl" "$(which curl)"
+
+    rm -rf $BUILDPACK_PATH/dependencies
+  )
+}
+
+testExtendScriptDoesNotShimCurlWhenThereAreNoDependencies() {
+  (
+    source ./bin/extend.sh ${BUILDPACK_PATH}
+
+    assertEquals "/usr/bin/curl" "$(which curl)"
+  )
+}
+
 
 # ==================================== Utilities ====================================
 
