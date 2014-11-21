@@ -3,6 +3,11 @@
 set -euo pipefail
 
 function curl() {
+    if [[ ${BUILDPACK_PATH:-VariableNotSet} == "VariableNotSet" ]] ; then
+      echo "You are running a buildpack version of curl but have not set BUILDPACK_PATH" 1>&2
+      exit 1
+    fi
+
     local http_url=''
     local write_file=''
     local create_output_filename=''
