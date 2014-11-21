@@ -2,6 +2,7 @@
 set -euo pipefail
 
 setUp() {
+    cd $BASE/..
     export BUILDPACK_PATH=/tmp/common_spec
     mkdir -p $BUILDPACK_PATH
     rm -rf $BUILDPACK_PATH/dependencies

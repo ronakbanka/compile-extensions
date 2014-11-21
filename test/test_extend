@@ -1,6 +1,7 @@
 #!/bin/sh
 
 setUp() {
+    cd $BASE/..
     export BUILDPACK_PATH=/tmp/compile-extensions-test-extend
     mkdir -p $BUILDPACK_PATH
     mkdir -p $BUILDPACK_PATH/compile-extensions/bin
