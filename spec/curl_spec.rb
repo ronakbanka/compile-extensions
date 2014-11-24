@@ -43,11 +43,27 @@ describe 'curl' do
       FileUtils.rm_rf buildpack_path
     end
 
-    it 'warns when the file does not exist as a dependency' do
-      expected_output='Resource http://files.com/file.txt is not provided by this buildpack. Please upgrade your buildpack to receive the latest resources.'
 
-      curl 'http://files.com/file.txt'
-      expect(stderr).to include(expected_output)
+    context 'the cache is empty' do
+      it 'does not warn about BUILDPACK PATH' do
+        curl 'http://files.com/file.txt'
+
+        expect(stderr).to_not include('You are running a buildpack version of curl but have not set BUILDPACK_PATH')
+      end
+
+      it 'exits cleanly' do
+        curl 'http://files.com/file.txt'
+
+        expect(status).to be_success
+      end
+
+      it 'warns when the file is not in the cache' do
+        expected_output='Resource http://files.com/file.txt is not provided by this buildpack. Please upgrade your buildpack to receive the latest resources.'
+
+        curl 'http://files.com/file.txt'
+
+        expect(stderr).to include(expected_output)
+      end
     end
 
     context 'a file is in the cache' do
@@ -60,6 +76,15 @@ describe 'curl' do
         FileUtils.mkdir_p dep_dir
         File.open(cached_file, 'w') { |f| f.write 'some text' }
       end
+
+      it 'there is no warning about the file not existing in the cache' do
+        expected_output='Resource http://files.com/file.txt is not provided by this buildpack. Please upgrade your buildpack to receive the latest resources.'
+
+        curl 'http://files.com/file.txt'
+
+        expect(stderr).to_not include(expected_output)
+      end
+
 
       it "grabs the cached file's contents" do
         curl "#{protocol}://files.com/file.txt"
@@ -74,6 +99,13 @@ describe 'curl' do
 
             expect(stdout).to eq('some text')
           end
+
+          it "grabs the cached file's contents" do
+            curl "#{protocol}://files.com/file.txt -o-"
+
+            expect(stdout).to eq('some text')
+          end
+
         end
 
         context 'which is another file' do

@@ -1,62 +1,88 @@
-#!/bin/bash
+#!/usr/bin/env ruby
 
-set -euo pipefail
+require 'slop'
 
-function curl() {
-    if [[ ${BUILDPACK_PATH:-VariableNotSet} == "VariableNotSet" ]] ; then
-      echo "You are running a buildpack version of curl but have not set BUILDPACK_PATH" 1>&2
-      exit 1
-    fi
+opts = Slop.parse! do
+  on :o, :output=, 'Output file'
+end
 
-    local http_url=''
-    local write_file=''
-    local create_output_filename=''
+uri = ARGV[0]
 
-    # Read arguments and set to $@r
-    set -- $(getopt :o:Os $@;)
+unless ENV['BUILDPACK_PATH']
+  STDERR.puts 'You are running a buildpack version of curl but have not set BUILDPACK_PATH'
+  exit 1
+end
 
-    for i
-    do
-        case "$i"
-        in
-            -O)
-                create_output_filename=true
-                shift;;
-            -o)
-                if [[ ${2} != "-" ]]
-                then
-                    write_file=${2}
-                fi
-                shift; shift;;
-            -s)
-                shift;;
-            --)
-                http_url=${2}; shift;
-                filename=$(sed 's/[:\/]/_/g' <<< ${http_url})
-                shift;
-        esac
-    done
+cache_path = File.join(ENV['BUILDPACK_PATH'], 'dependencies')
+sanitized_uri = uri.gsub(/[\/:]/, '_')
 
-    ## Do we have to generate a filename ourselves to write to?
-    if [[ -n "$create_output_filename" ]]
-    then
-        write_file=$(echo ${http_url} | rev | cut -d\/ -f1 | rev)
-    fi
+file_path = File.join(cache_path, sanitized_uri)
 
-    if test -f $BUILDPACK_PATH/dependencies/$filename
-    then
-        ## Was a file to write to provided?
-        if [[ -n "$write_file" ]]
-        then
-            ## Write to file
-            cat $BUILDPACK_PATH/dependencies/$filename > $write_file
-        else
-            # Stream output
-            cat $BUILDPACK_PATH/dependencies/$filename
-        fi
-    else
-        echo "Resource ${http_url} is not provided by this buildpack. Please upgrade your buildpack to receive the latest resources." 1>&2
-    fi
-}
+if File.exist? file_path
+  File.open(file_path, 'r') do |cache_file|
+    print cache_file.read
+  end
+else
+  STDERR.puts "Resource #{uri} is not provided by this buildpack. Please upgrade your buildpack to receive the latest resources."
+end
 
-curl $@
+#set -euo pipefail
+#
+#function curl() {
+#    if [[ ${BUILDPACK_PATH:-VariableNotSet} == "VariableNotSet" ]] ; then
+#      echo "You are running a buildpack version of curl but have not set BUILDPACK_PATH" 1>&2
+#      exit 1
+#    fi
+#
+#    local http_url=''
+#    local write_file=''
+#    local create_output_filename=''
+#
+#    # Read arguments and set to $@r
+#    set -- $(getopt :o:Os $@;)
+#
+#    for i
+#    do
+#        case "$i"
+#        in
+#            -O)
+#                create_output_filename=true
+#                shift;;
+#            -o)
+#                if [[ ${2} != "-" ]]
+#                then
+#                    write_file=${2}
+#                fi
+#                shift; shift;;
+#            -s)
+#                shift;;
+#            --)
+#                http_url=${2}; shift;
+#                filename=$(sed 's/[:\/]/_/g' <<< ${http_url})
+#                shift;
+#        esac
+#    done
+#
+#    ## Do we have to generate a filename ourselves to write to?
+#    if [[ -n "$create_output_filename" ]]
+#    then
+#        write_file=$(echo ${http_url} | rev | cut -d\/ -f1 | rev)
+#    fi
+#
+#    if test -f $BUILDPACK_PATH/dependencies/$filename
+#    then
+#        ## Was a file to write to provided?
+#        if [[ -n "$write_file" ]]
+#        then
+#            ## Write to file
+#            cat $BUILDPACK_PATH/dependencies/$filename > $write_file
+#        else
+#            # Stream output
+#            cat $BUILDPACK_PATH/dependencies/$filename
+#        fi
+#    else
+#        echo "Resource ${http_url} is not provided by this buildpack. Please upgrade your buildpack to receive the latest resources." 1>&2
+#    fi
+#}
+#
+#curl $@
