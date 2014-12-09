@@ -12,13 +12,29 @@ describe 'translate_dependency_url' do
   let(:manifest) {
     <<-MANIFEST
 ---
+url_to_dependency_map:
+  -
+    match: !ruby/regexp /\\/(ruby)-(\\d+\\.\\d+\\.\\d+).tgz/
+    version: $2
+    name: $1
+  -
+    match: !ruby/regexp /\/jruby_(\\d+\\.\\d+\\.\\d+)_jdk_(\\d+\\.\\d+\\.\\d+).tgz/
+    version: $1::$2
+    name: jruby
+
 dependencies:
   -
-    original: http://thing.com/file.txt
-    xlated: http://thong.co.nz/file.txt
+    name: ruby
+    version: 1.9.3
+    uri: http://some.repo/ruby-1.9.3.tgz
   -
-    original: http://place.net/a_file.zip
-    xlated: https://another_location/a_file_elsewhere.zip
+    name: ruby
+    version: 2.1.1
+    uri: http://some.other.repo/ruby-two-one-one.tgz
+  -
+    name: jruby
+    version: 1.9.3::1.7.0
+    uri: http://another.repo/jruby_1.9.3_jdk_1.7.0.tgz
     MANIFEST
   }
 
@@ -32,7 +48,7 @@ dependencies:
     FileUtils.remove_entry buildpack_dir
   end
 
-  context 'with a cache' do
+  xcontext 'with a cache' do
     context 'when the url is defined in the manifest' do
       let(:original_url) { 'http://place.net/a_file.zip' }
 
@@ -50,17 +66,41 @@ dependencies:
   end
 
   context 'without a cache' do
-    context 'when the url is defined in the manifest' do
-      let(:original_url) { 'http://thing.com/file.txt' }
+    context 'the url has a matcher in the manifest' do
+      context 'ruby 1.9.3' do
+        let(:original_url) { 'http://some.repo/ruby-1.9.3.tgz' }
 
-      specify do
-        translated_url, _, _ = run_translate
+        specify do
+          translated_url, stderr, _ = run_translate
+          puts stderr
 
-        expect(translated_url).to eq "http://thong.co.nz/file.txt\n"
+          expect(translated_url).to eq "http://thong.co.nz/file.txt\n"
+        end
       end
+
+      context 'ruby 2.1.1' do
+        let(:original_url) { 'https://original.com/ruby-2.1.1.tgz' }
+
+        specify do
+          translated_url, _, _ = run_translate
+
+          expect(translated_url).to eq "http://some.other.repo/ruby-two-one-one.tgz\n"
+        end
+      end
+
+      context 'jruby 1.9.3::1.7.0' do
+        let(:original_url) { 'https://original.com/jruby_1.9.3_jdk_1.7.0.tgz' }
+
+        specify do
+          translated_url, _, _ = run_translate
+
+          expect(translated_url).to eq "http://another.repo/jruby_1.9.3_jdk_1.7.0.tgz\n"
+        end
+      end
+
     end
 
-    context 'when the url is not defined in the manifest' do
+    context 'the url does not have a matcher in the manifest' do
       let(:original_url) { 'http://i_r.not/here' }
 
       specify do
