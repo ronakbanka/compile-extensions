@@ -5,25 +5,36 @@ require 'compile_extensions'
 require 'yaml'
 
 uri = ARGV[0]
+app_cache_path = ARGV[1]
 cache_path = File.expand_path(File.join(File.dirname(__FILE__), '..', '..', 'dependencies'))
 
 manifest = YAML.load_file(File.join(File.dirname(__FILE__), '..', '..', 'manifest.yml'))
 dependencies = CompileExtensions::Dependencies.new(manifest)
 
-translated_uri = dependencies.find_translated_url(uri)
+translated_dependency = dependencies.find_translated_dependency(uri)
 
-if translated_uri.nil?
+unless translated_dependency.uri
   puts "DEPENDENCY_MISSING_IN_MANIFEST: #{uri}"
   exit 1
 end
 
-if File.exist? cache_path
-  file_path = File.join(cache_path, translated_uri.gsub(/[\/:]/, '_'))
-  translated_uri = "file://#{file_path}"
+if app_cache_path
+  file_path = File.join(app_cache_path, translated_dependency.cached_uri)
+
+  if File.exist? file_path
+    cached_dependency_md5 = Digest::MD5.file(file_path).hexdigest
+
+    if cached_dependency_md5 == translated_dependency.md5
+      translated_dependency.uri = "file://#{file_path}"
+    end
+  end
+elsif File.exist? cache_path
+  file_path = File.join(cache_path, translated_dependency.cached_uri)
+  translated_dependency.uri = "file://#{file_path}"
 end
 
 if ENV['BP_DEBUG']
-  STDERR.puts "DEBUG: #{File.basename(__FILE__)}: #{translated_uri}"
+  STDERR.puts "DEBUG: #{File.basename(__FILE__)}: #{translated_dependency.uri}"
 end
 
-puts translated_uri
+puts translated_dependency.uri

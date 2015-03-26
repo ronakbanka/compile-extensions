@@ -1,5 +1,13 @@
+require 'ostruct'
+
 module CompileExtensions
   class Dependencies
+    class Dependency < OpenStruct
+      def cached_uri
+        uri.gsub(/[\/:]/, '_')
+      end
+    end
+
     def initialize(manifest)
       @manifest = manifest
     end
@@ -13,12 +21,10 @@ module CompileExtensions
       find_dependency_with_mapping(mapping)
     end
 
-    def find_translated_url(uri)
+    def find_translated_dependency(uri)
       dependency = find_matching_dependency(uri)
 
-      return nil if dependency.nil?
-
-      dependency['uri']
+      Dependency.new(dependency)
     end
 
     private

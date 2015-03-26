@@ -203,7 +203,7 @@ module CompileExtensions
       end
 
       describe 'find matching dependency translated url' do
-        let(:translated_url) { dependencies.find_translated_url(original_url) }
+        let(:translated_url) { dependencies.find_translated_dependency(original_url).uri }
 
         context 'a matching dependency' do
           let(:original_url) { 'https://google.com/backdoor' }

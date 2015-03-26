@@ -2,10 +2,6 @@ require 'spec_helper'
 require 'open3'
 
 describe 'translate_dependency_url' do
-  def run_translate
-    Open3.capture3("#{buildpack_dir}/compile-extensions/bin/translate_dependency_url #{original_url}")
-  end
-
   let(:buildpack_dir) { Dir.mktmpdir }
 
   let(:manifest) {
@@ -26,6 +22,7 @@ dependencies:
     name: ruby
     version: 1.9.3
     uri: http://thong.co.nz/file.tgz
+    md5: #{Digest::MD5.hexdigest('')}
     cf_stacks:
       - lucid64
   -
@@ -55,7 +52,11 @@ dependencies:
     FileUtils.remove_entry buildpack_dir
   end
 
-  context 'with a cache' do
+  context 'with a buildpack cache' do
+    def run_translate
+      Open3.capture3("#{buildpack_dir}/compile-extensions/bin/translate_dependency_url #{original_url}")
+    end
+
     context 'when the url is defined in the manifest' do
       let(:original_url) { 'http://some.repo/ruby-1.9.3.tgz' }
 
@@ -71,7 +72,11 @@ dependencies:
     end
   end
 
-  context 'without a cache' do
+  context 'without a buildpack cache' do
+    def run_translate
+      Open3.capture3("#{buildpack_dir}/compile-extensions/bin/translate_dependency_url #{original_url}")
+    end
+
     context 'the url has a matcher in the manifest' do
       context 'ruby 1.9.3' do
         let(:original_url) { 'http://some.repo/ruby-1.9.3.tgz' }
@@ -113,6 +118,52 @@ dependencies:
 
         expect(translated_url).to eq "DEPENDENCY_MISSING_IN_MANIFEST: #{original_url}\n"
         expect(status).not_to be_success
+      end
+    end
+  end
+
+  context 'with an app cache' do
+    let(:app_cache_dir) { Dir.mktmpdir }
+
+    def run_translate
+      Open3.capture3("#{buildpack_dir}/compile-extensions/bin/translate_dependency_url #{original_url} #{app_cache_dir}")
+    end
+
+    context 'with the resource already cached' do
+      let(:original_url) { 'http://some.repo/ruby-1.9.3.tgz' }
+
+      def create_app_cache_resource
+        FileUtils.touch File.join(app_cache_dir, 'http___thong.co.nz_file.tgz')
+      end
+
+      def modify_app_cache_resource
+        File.write(File.join(app_cache_dir, 'http___thong.co.nz_file.tgz'), 'ponies')
+      end
+
+      it 'returns the app cache file:// URI' do
+        create_app_cache_resource
+
+        translated_url, stderr, _ = run_translate
+        expect(translated_url).to eq "file://#{app_cache_dir}/http___thong.co.nz_file.tgz\n"
+      end
+
+      context 'when the requested resource has a different MD5' do
+        it 'returns does not return the app cache file:// URI' do
+          create_app_cache_resource
+          modify_app_cache_resource
+
+          translated_url, stderr, _ = run_translate
+          expect(translated_url).not_to eq "file://#{app_cache_dir}/http___thong.co.nz_file.tgz\n"
+        end
+      end
+    end
+
+    context 'with the resource not cached' do
+      let(:original_url) { 'http://some.other.repo/ruby-9.9.9.tgz' }
+
+      it 'returns does not return the app cache file:// URI' do
+        translated_url, stderr, _ = run_translate
+        expect(translated_url).not_to eq "file://#{app_cache_dir}/http___thong.co.nz_file.tgz\n"
       end
     end
   end
