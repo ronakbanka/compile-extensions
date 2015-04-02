@@ -1,0 +1,8 @@
+#!/usr/bin/env ruby
+
+APP_CACHE_DIR = ARGV.first 
+CF_STACK_PATH = APP_CACHE_DIR + '.cf_stack'
+
+unless File.exists?(CF_STACK_PATH) && File.read(CF_STACK_PATH) == ENV['CF_STACK']
+  Dir.rmdir APP_CACHE_DIR
+end
