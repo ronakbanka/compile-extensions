@@ -60,7 +60,11 @@ module CompileExtensions
     end
 
     def dependency_satisfies_current_stack(dependency)
-      dependency['cf_stacks'].include?(stack)
+      if ENV['IGNORE_STACK'] == "true"
+        dependency['cf_stacks']
+      else
+        dependency['cf_stacks'].include?(stack)
+      end
     end
 
     def stack
